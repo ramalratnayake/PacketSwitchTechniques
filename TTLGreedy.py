@@ -6,8 +6,8 @@ import random
 import sys
  
 def sigint_handler(signum, frame):
-	global die_bitches
-	die_bitches = True
+	global finish_flag
+	finish_flag = True
 	exit()
  
 signal.signal(signal.SIGINT, sigint_handler)
@@ -18,20 +18,6 @@ oNQs = 10
 TTL   = 0
 OPort = 1
 IPort = 2
-
-# 
-# 
-# 
-# POSSIBLE CLOCK SYNC, WAIT ON EVENTS AT EACH STAGE AND HAVE A TIMER INTERRUPT RESET THOSE EVENTS
-# 
-# 
-# 
-# WHAT HAPPENS IF IT FAILS TO FIND STABLE MATCHING 
-# USE IRWING'S ALGO?????????????????
-# 
-# 
-# 
-# 
 
 class state:
 	IDLE 		 = 0
@@ -105,14 +91,14 @@ def input_Q_thread(id):
 	global input_ports
 	global input_Qs
 	global output_Qs
-	global die_bitches
+	global finish_flag
 	global prop_ports
 	global curr_state
 	global num_not_matched
 	global var_lock
 	global prop_locks
 
-	while not(die_bitches):
+	while not(finish_flag):
 		############################################ PHASE 1.0 ############################################
 		if(is_state(state.ARRIVAL)):
 			# If a new packet arrived at this port 
@@ -129,7 +115,7 @@ def input_Q_thread(id):
 
 			# Wait for state change 
 			while is_state(state.ARRIVAL):
-				if die_bitches:
+				if finish_flag:
 					return
 				pass			
 
@@ -151,7 +137,7 @@ def input_Q_thread(id):
 
 			# Wait until state change
 			while hasnt_reached(state.SCHED_1_EVAL):
-				if die_bitches:
+				if finish_flag:
 					return
 				pass
 
@@ -183,7 +169,7 @@ def input_Q_thread(id):
 
 			# Wait until state change
 			while is_state(state.SCHED_1_EVAL):
-				if die_bitches:
+				if finish_flag:
 					return
 				pass
 
@@ -199,20 +185,20 @@ def input_Q_thread(id):
 		else:
 			state_now = curr_state
 			while is_state(state_now):
-				if(die_bitches):	
+				if(finish_flag):	
 					return				
 				pass
 
 def output_Q_thread(id):
 	global out_ports
 	global output_Qs
-	global die_bitches
+	global finish_flag
 	global prop_ports
 	global curr_state
 	global transmitted_packets
 	global prop_locks
 
-	while not(die_bitches):
+	while not(finish_flag):
 		# if(is_state(state.ARRIVAL)):
 			# prop_locks[id].acquire()
 			# if(len(prop_ports[id]) is not 0):
@@ -286,7 +272,7 @@ def output_Q_thread(id):
 		# Wait till state change
 		state_now = curr_state
 		while is_state(state_now):
-			if(die_bitches):	
+			if(finish_flag):	
 				return				
 			pass
 
@@ -294,7 +280,7 @@ def send_packets_out():
 	global out_ports
 	global transmitted_packets
 	global timer_tick
-	global die_bitches
+	global finish_flag
 	global late_lock
 	global late_count
 	global output_Qs
@@ -306,7 +292,7 @@ def send_packets_out():
 			i.sort(key=lambda tup: tup[TTL])
 			for j in i:
 				if(j[TTL] < timer_tick):
-					# die_bitches = True
+					# finish_flag = True
 					thread_print("LATE! : " + str(j) + " ------ " + str(timer_tick))
 					late_count += 1
 					# exit()
@@ -317,7 +303,7 @@ def send_packets_out():
 	# 	if(len(i) != 0):
 	# 		for j in i:
 	# 			if(j[TTL] < timer_tick):
-	# 				# die_bitches = True
+	# 				# finish_flag = True
 	# 				thread_print("LATE! : " + str(j) + " ------ " + str(timer_tick))
 	# 				late_count += 1
 	# 				# exit()
@@ -332,7 +318,7 @@ timer_tick = 0
 late_count = 0
 late_lock = threading.Lock()
 
-die_bitches = False
+finish_flag = False
 
 input_ports = [None for i in xrange(0, iNQs)]
 grant_ports = [[]   for i in xrange(0, iNQs)]
@@ -474,6 +460,6 @@ thread_print("Is: :" + str(len(all_inputs)) + ", Os: " + str(len(transmitted_pac
 
 thread_print("took " + str(tick_counter) + " ticks to finish")
 
-die_bitches = True
+finish_flag = True
 thread_print("There were " + str((num_packets * iNQs) - late_count) + "/" + str((num_packets * iNQs)) + " packets transmitted")
 thread_print("Base was " + str(base))
